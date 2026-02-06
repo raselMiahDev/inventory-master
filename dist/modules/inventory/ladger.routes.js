@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_middlewares_1 = require("../../middlewares/auth.middlewares");
+const ladger_controller_1 = require("./ladger.controller");
+const role_middlewares_1 = require("../../middlewares/role.middlewares");
+const enum_1 = require("../../enum");
+const inventoryRouter = (0, express_1.Router)();
+inventoryRouter.post("/receive", auth_middlewares_1.authMiddleware, (0, role_middlewares_1.roleMiddleware)([enum_1.UserRole.IN_CHARGE]), ladger_controller_1.createReceive);
+inventoryRouter.get("/getReceive", ladger_controller_1.getReceived);
+exports.default = inventoryRouter;

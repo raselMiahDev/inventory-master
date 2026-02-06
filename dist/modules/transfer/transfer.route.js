@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const transfer_controller_1 = require("./transfer.controller");
+const auth_middlewares_1 = require("../../middlewares/auth.middlewares");
+const transfer_validate_1 = require("./transfer.validate");
+const transfer_validation_1 = require("./transfer.validation");
+const transferRoute = (0, express_1.Router)();
+transferRoute.post("/", auth_middlewares_1.authMiddleware, (0, transfer_validate_1.validationRequest)(transfer_validation_1.TransferZod), transfer_controller_1.transferStock);
+exports.default = transferRoute;
