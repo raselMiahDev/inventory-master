@@ -1,5 +1,6 @@
 
 import { TransactionType } from '../../enum';
+import { Types } from 'mongoose';
 
 export interface IInventory {
     _id: string;
@@ -36,15 +37,16 @@ export interface IStockMovement {
 }
 
 export interface IDepotStock {
-    depotId: string | object;
-    depotName: string | object;
-    depotCode: string | object;
-    productId: string | object;
-    productName: string | object;
-    productCode: string | object;
-    packSize: string | object;
+    depotId: string;
+    depotName: string;
+    depotCode: string;
+    productId: string;
+    productName: string;
+    productCode: string;
+    packSize: string;
     quantity: number;
-    lastUpdated: Date
+    value: number;
+    lastUpdated: Date;
 }
 
 export interface IProductStock {
@@ -53,9 +55,9 @@ export interface IProductStock {
     productCode: string;
     totalQuantity: number; // Across all depots
     depotWise: Array<{
-        depotId: string;
-        depotName: string;
-        depotCode: string;
+        depotId: string | object;
+        depotName: string | object;
+        depotCode: string | object;
         quantity: number;
     }>;
 }
@@ -87,4 +89,27 @@ export interface IStockHistoryFilters {
     type?: TransactionType;
     page?: number;
     limit?: number;
+}
+
+
+
+interface PopulatedDepot {
+    _id: Types.ObjectId;
+    name: string;
+    code: string;
+}
+
+interface PopulatedProduct {
+    _id: Types.ObjectId;
+    name: string;
+    code: string;
+    packSize: string;
+    unitPrice: number;
+}
+
+export interface PopulatedInventory {
+    depotId: PopulatedDepot;
+    productId: PopulatedProduct;
+    quantity: number;
+    lastUpdated: Date;
 }

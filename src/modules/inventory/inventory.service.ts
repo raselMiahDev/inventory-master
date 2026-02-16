@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import { InventoryModel } from './inventory.model';
 import { LedgerModel } from './ledger.model';
 import { ProductModel } from '../product/product.model';
-import { v4 as uuidv4 } from 'uuid';
 import { DepotModel } from '../depo/depo.model';
 import {
     IReceiveStockRequest,
@@ -10,7 +9,7 @@ import {
     ITransferStockRequest,
     IStockHistoryFilters,
     IDepotStock,
-    IProductStock
+    IProductStock, PopulatedInventory
 } from './inventory.types';
 import { TransactionType } from '../../enum';
 
@@ -160,11 +159,7 @@ export const sellStock = async (
 };
 
 // Transfer stock between depots
-export const transferStock = async (
-    fromDepotId: string,
-    data: ITransferStockRequest,
-    createdBy: string
-): Promise<{
+export const transferStock = async (fromDepotId: string,data: ITransferStockRequest,createdBy: string): Promise<{
     fromInventory: any;
     toInventory: any;
     transferOutLedger: any;
@@ -247,58 +242,55 @@ export const getDepotStock = async (depotId: string): Promise<IDepotStock[]> => 
         .populate('productId', 'name code packSize unitPrice')
         .populate('depotId', 'name code')
         .sort({ 'productId.name': 1 })
-        .lean();
+        .lean<PopulatedInventory[]>();
 
     return inventory.map(item => ({
-        depotId: item.depotId,
-        depotName: item.depotId,
-        depotCode: item.depotId,
-        productId: item.productId,
-        productName: item.productId,
-        productCode: item.productId,
-        packSize: item.productId,
+        depotId: item.depotId._id.toString(),
+        depotName: item.depotId.name,
+        depotCode: item.depotId.code,
+        productId: item.productId._id.toString(),
+        productName: item.productId.name,
+        productCode: item.productId.code,
+        packSize: item.productId.packSize,
         quantity: item.quantity,
-        //value: item.quantity * item.productId,
+        value: item.quantity * item.productId.unitPrice,
         lastUpdated: item.lastUpdated
     }));
 };
 
 // Get product stock across all depots
-// export const getProductStock = async (productId: string | string[]): Promise<IProductStock> => {
-//     // Get product details
-//     const product = await ProductModel.findById(productId).lean();
-//     if (!product) {
-//         throw new Error('Product not found');
-//     }
+export const getProductStock = async (productId: string | string[]): Promise<IProductStock> => {
+    // Get product details
+    const product = await ProductModel.findById(productId).lean();
+    if (!product) {
+        throw new Error('Product not found');
+    }
 
-//     // Get stock across all depots
-//     const inventory = await InventoryModel.find({ productId })
-//         .populate('depotId', 'name code')
-//         .lean();
+    // Get stock across all depots
+    const inventory = await InventoryModel.find({ productId })
+        .populate('depotId', 'name code')
+        .lean();
 
-//     const totalQuantity = inventory.reduce((sum, item) => sum + item.quantity, 0);
+    const totalQuantity = inventory.reduce((sum, item) => sum + item.quantity, 0);
 
-//     const depotWise = inventory.map(item => ({
-//         depotId: item.depotId._id.toString(),
-//         depotName: item.depotId.name,
-//         depotCode: item.depotId.code,
-//         quantity: item.quantity
-//     }));
+    const depotWise = inventory.map(item => ({
+        depotId: item.depotId.toString(),
+        depotName: item.depotId.toString(),
+        depotCode: item.depotId.toString(),
+        quantity: item.quantity
+    }));
 
-//     return {
-//         productId: product._id.toString(),
-//         productName: product.name,
-//         productCode: product.code,
-//         totalQuantity,
-//         depotWise
-//     };
-// };
+    return {
+        productId: product._id.toString(),
+        productName: product.name,
+        productCode: product.code,
+        totalQuantity,
+        depotWise:depotWise
+    };
+};
 
 // Get stock history/ledger for depot
-export const getStockHistory = async (
-    depotId: string,
-    filters: IStockHistoryFilters
-): Promise<{
+export const getStockHistory = async (depotId: string,filters: IStockHistoryFilters): Promise<{
     data: any[];
     total: number;
     page: number;
@@ -362,32 +354,34 @@ export const getStockHistory = async (
 };
 
 // Get low stock alerts
-// export const getLowStockAlerts = async (
-//     depotId: string,
-//     threshold: number = 100
-// ): Promise<IDepotStock[]> => {
-//     const inventory = await InventoryModel.find({
-//         depotId,
-//         quantity: { $lt: threshold }
-//     })
-//         .populate('productId', 'name code packSize unitPrice')
-//         .populate('depotId', 'name code')
-//         .sort({ quantity: 1 })
-//         .lean();
+export const getLowStockAlerts = async (
+    depotId: string,
+    threshold: number = 100
+): Promise<IDepotStock[]> => {
 
-//     return inventory.map(item => ({
-//         depotId: item.depotId._id.toString(),
-//         depotName: item.depotId.name,
-//         depotCode: item.depotId.code,
-//         productId: item.productId._id.toString(),
-//         productName: item.productId.name,
-//         productCode: item.productId.code,
-//         packSize: item.productId.packSize,
-//         quantity: item.quantity,
-//         value: item.quantity * item.productId.unitPrice,
-//         lastUpdated: item.lastUpdated
-//     }));
-// };
+    const inventory = await InventoryModel.find({
+        depotId,
+        quantity: { $lt: threshold }
+    })
+        .populate('productId', 'name code packSize unitPrice')
+        .populate('depotId', 'name code')
+        .sort({ quantity: 1 })
+        .lean<PopulatedInventory[]>();
+
+    return inventory.map(item => ({
+        depotId: item.depotId._id.toString(),
+        depotName: item.depotId.name,
+        depotCode: item.depotId.code,
+        productId: item.productId._id.toString(),
+        productName: item.productId.name,
+        productCode: item.productId.code,
+        packSize: item.productId.packSize,
+        quantity: item.quantity,
+        value: item.quantity * item.productId.unitPrice,
+        lastUpdated: item.lastUpdated
+    }));
+};
+
 
 // Get stock movement summary
 export const getStockMovementSummary = async (
