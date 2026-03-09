@@ -27,13 +27,6 @@ app.get('/api/test', (req, res) => {
   res.json({ message: '🚀🚀🚀API is working!' });
 });
 
-// ✅ FOR LOCAL DEVELOPMENT ONLY
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`Local server running on port ${PORT}`);
-  });
-}
 
 // global error handler
 app.use(errorHandler);
