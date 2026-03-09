@@ -3,10 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getStockMovementSummary = exports.getStockHistory = exports.getDepotStock = exports.transferStock = exports.sellStock = exports.receiveStock = void 0;
+exports.getStockMovementSummary = exports.getLowStockAlerts = exports.getStockHistory = exports.getProductStock = exports.getDepotStock = exports.transferStock = exports.sellStock = exports.receiveStock = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const inventory_model_1 = require("./inventory.model");
 const ledger_model_1 = require("./ledger.model");
+const product_model_1 = require("../product/product.model");
 const depo_model_1 = require("../depo/depo.model");
 const enum_1 = require("../../enum");
 // Get or create inventory record
@@ -152,45 +153,46 @@ const getDepotStock = async (depotId) => {
         .sort({ 'productId.name': 1 })
         .lean();
     return inventory.map(item => ({
-        depotId: item.depotId,
-        depotName: item.depotId,
-        depotCode: item.depotId,
-        productId: item.productId,
-        productName: item.productId,
-        productCode: item.productId,
-        packSize: item.productId,
+        depotId: item.depotId._id.toString(),
+        depotName: item.depotId.name,
+        depotCode: item.depotId.code,
+        productId: item.productId._id.toString(),
+        productName: item.productId.name,
+        productCode: item.productId.code,
+        packSize: item.productId.packSize,
         quantity: item.quantity,
-        //value: item.quantity * item.productId,
+        value: item.quantity * item.productId.unitPrice,
         lastUpdated: item.lastUpdated
     }));
 };
 exports.getDepotStock = getDepotStock;
 // Get product stock across all depots
-// export const getProductStock = async (productId: string | string[]): Promise<IProductStock> => {
-//     // Get product details
-//     const product = await ProductModel.findById(productId).lean();
-//     if (!product) {
-//         throw new Error('Product not found');
-//     }
-//     // Get stock across all depots
-//     const inventory = await InventoryModel.find({ productId })
-//         .populate('depotId', 'name code')
-//         .lean();
-//     const totalQuantity = inventory.reduce((sum, item) => sum + item.quantity, 0);
-//     const depotWise = inventory.map(item => ({
-//         depotId: item.depotId._id.toString(),
-//         depotName: item.depotId.name,
-//         depotCode: item.depotId.code,
-//         quantity: item.quantity
-//     }));
-//     return {
-//         productId: product._id.toString(),
-//         productName: product.name,
-//         productCode: product.code,
-//         totalQuantity,
-//         depotWise
-//     };
-// };
+const getProductStock = async (productId) => {
+    // Get product details
+    const product = await product_model_1.ProductModel.findById(productId).lean();
+    if (!product) {
+        throw new Error('Product not found');
+    }
+    // Get stock across all depots
+    const inventory = await inventory_model_1.InventoryModel.find({ productId })
+        .populate('depotId', 'name code')
+        .lean();
+    const totalQuantity = inventory.reduce((sum, item) => sum + item.quantity, 0);
+    const depotWise = inventory.map(item => ({
+        depotId: item.depotId.toString(),
+        depotName: item.depotId.toString(),
+        depotCode: item.depotId.toString(),
+        quantity: item.quantity
+    }));
+    return {
+        productId: product._id.toString(),
+        productName: product.name,
+        productCode: product.code,
+        totalQuantity,
+        depotWise: depotWise
+    };
+};
+exports.getProductStock = getProductStock;
 // Get stock history/ledger for depot
 const getStockHistory = async (depotId, filters) => {
     const { startDate, endDate, productId, type, page = 1, limit = 20 } = filters;
@@ -235,31 +237,29 @@ const getStockHistory = async (depotId, filters) => {
 };
 exports.getStockHistory = getStockHistory;
 // Get low stock alerts
-// export const getLowStockAlerts = async (
-//     depotId: string,
-//     threshold: number = 100
-// ): Promise<IDepotStock[]> => {
-//     const inventory = await InventoryModel.find({
-//         depotId,
-//         quantity: { $lt: threshold }
-//     })
-//         .populate('productId', 'name code packSize unitPrice')
-//         .populate('depotId', 'name code')
-//         .sort({ quantity: 1 })
-//         .lean();
-//     return inventory.map(item => ({
-//         depotId: item.depotId._id.toString(),
-//         depotName: item.depotId.name,
-//         depotCode: item.depotId.code,
-//         productId: item.productId._id.toString(),
-//         productName: item.productId.name,
-//         productCode: item.productId.code,
-//         packSize: item.productId.packSize,
-//         quantity: item.quantity,
-//         value: item.quantity * item.productId.unitPrice,
-//         lastUpdated: item.lastUpdated
-//     }));
-// };
+const getLowStockAlerts = async (depotId, threshold = 100) => {
+    const inventory = await inventory_model_1.InventoryModel.find({
+        depotId,
+        quantity: { $lt: threshold }
+    })
+        .populate('productId', 'name code packSize unitPrice')
+        .populate('depotId', 'name code')
+        .sort({ quantity: 1 })
+        .lean();
+    return inventory.map(item => ({
+        depotId: item.depotId._id.toString(),
+        depotName: item.depotId.name,
+        depotCode: item.depotId.code,
+        productId: item.productId._id.toString(),
+        productName: item.productId.name,
+        productCode: item.productId.code,
+        packSize: item.productId.packSize,
+        quantity: item.quantity,
+        value: item.quantity * item.productId.unitPrice,
+        lastUpdated: item.lastUpdated
+    }));
+};
+exports.getLowStockAlerts = getLowStockAlerts;
 // Get stock movement summary
 const getStockMovementSummary = async (depotId, days = 7) => {
     const startDate = new Date();

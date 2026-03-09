@@ -10,14 +10,14 @@ const router = (0, express_1.Router)();
 router.use(auth_middlewares_1.authMiddleware);
 // Stock operations
 router.post('/receive', (0, role_middlewares_1.roleMiddleware)([enum_1.UserRole.ADMIN, enum_1.UserRole.IN_CHARGE]), inventory_controller_1.receiveStockController);
-//router.post('/sell', roleMiddleware([UserRole.ADMIN, UserRole.IN_CHARGE]), sellStockController);
-//router.post('/transfer', roleMiddleware([UserRole.ADMIN, UserRole.IN_CHARGE]), transferStockController);
+router.post('/sell', (0, role_middlewares_1.roleMiddleware)([enum_1.UserRole.ADMIN, enum_1.UserRole.IN_CHARGE]), inventory_controller_1.sellStockController);
+router.post('/transfer', (0, role_middlewares_1.roleMiddleware)([enum_1.UserRole.ADMIN, enum_1.UserRole.IN_CHARGE]), inventory_controller_1.transferStockController);
 // Stock queries
-//router.get('/depot/:depotId?', getDepotStockController);
-//router.get('/product/:productId', getProductStockController);
-//router.get('/history/:depotId?', getStockHistoryController);
-//router.get('/alerts/:depotId?', getLowStockAlertsController);
-//router.get('/summary/:depotId?', getStockMovementSummaryController);
+router.get('/depot/:depotId', inventory_controller_1.getDepotStockController);
+router.get('/product/:productId', inventory_controller_1.getProductStockController);
+router.get('/history/:depotId', inventory_controller_1.getStockHistoryController);
+router.get('/alerts/:depotId', inventory_controller_1.getLowStockAlertsController);
+router.get('/summary/:depotId', inventory_controller_1.getStockMovementSummaryController);
 // Admin only operations
 //router.post('/initialize/:depotId', roleMiddleware([UserRole.ADMIN]), initializeDepotInventoryController);
 exports.default = router;

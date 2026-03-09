@@ -1,257 +1,311 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCustomerHistoryController = exports.cancelSaleController = exports.getSummaryController = exports.markBankDepositController = exports.getTodaySalesController = exports.getDailySalesController = exports.getSaleByIdController = exports.getSalesController = exports.createSaleController = void 0;
-const sale_service_1 = require("./sale.service");
-const sale_validator_1 = require("./sale.validator");
-const validateRequest_1 = require("../../utils/validateRequest");
-const requestHelpers_1 = require("../../utils/requestHelpers");
+import { Request, Response } from 'express';
+import {
+    createSale,
+    getSaleById,
+    getSales,
+    getDailySales,
+    getTodaySales,
+    markBankDeposit,
+    getSalesSummary,
+    cancelSale,
+    getCustomerHistory
+} from './sale.service';
+import {
+    createSaleSchema,
+    bankDepositSchema,
+    saleFiltersSchema,
+    saleIdSchema,
+    dailySalesIdSchema,
+    dateRangeSchema
+} from './sale.validator';
+import {validateRequest} from "../../utils/validateRequest";
+import {resolveUserAndDepot} from "../../utils/requestHelpers";
+import {UserRole} from "../../enum";
+
 // Create new sale
-const createSaleController = async (req, res) => {
+export const createSaleController = async (req: Request, res: Response) => {
     try {
         // Validate request
-        const validatedData = (0, validateRequest_1.validateRequest)(sale_validator_1.createSaleSchema, req);
-        const { depotId, userId } = (0, requestHelpers_1.resolveUserAndDepot)(req);
+        const validatedData = validateRequest(createSaleSchema,req);
+
+        const {depotId,userId} = resolveUserAndDepot(req as any)
+
         // Create sale
-        const sale = await (0, sale_service_1.createSale)(depotId, validatedData, userId);
+        const sale = await createSale(depotId, validatedData, userId);
+
         res.status(201).json({
             success: true,
             message: 'Sale completed successfully',
             data: sale
         });
-    }
-    catch (error) {
+    } catch (error: any) {
         res.status(400).json({
             success: false,
             message: error.message || 'Failed to create sale'
         });
     }
 };
-exports.createSaleController = createSaleController;
+
 // Get all sales
-const getSalesController = async (req, res) => {
+export const getSalesController = async (req: Request, res: Response) => {
     try {
-        const validatedFilters = sale_validator_1.saleFiltersSchema.parse(req.query);
-        const userRole = req.user?.role;
-        const userDepotId = req.user?.depoId;
+        const validatedFilters = saleFiltersSchema.parse(req.query);
+
+        const userRole = (req as any).user?.role;
+        const userDepotId = (req as any).user?.depoId;
+
         // If in-charge, restrict to their depot
         if (userRole === 'in_charge' && !validatedFilters.depotId) {
             validatedFilters.depotId = userDepotId;
         }
-        const result = await (0, sale_service_1.getSales)(validatedFilters);
+
+        const result = await getSales(validatedFilters);
+
         res.status(200).json({
             success: true,
             ...result
         });
-    }
-    catch (error) {
+    } catch (error: any) {
         res.status(400).json({
             success: false,
             message: error.message || 'Failed to fetch sales'
         });
     }
 };
-exports.getSalesController = getSalesController;
+
 // Get sale by ID
-const getSaleByIdController = async (req, res) => {
+export const getSaleByIdController = async (req: Request, res: Response) => {
     try {
-        const { id } = sale_validator_1.saleIdSchema.parse(req.params);
-        const sale = await (0, sale_service_1.getSaleById)(id);
+        const { id } = saleIdSchema.parse(req.params);
+
+        const sale = await getSaleById(id);
+
         if (!sale) {
             return res.status(404).json({
                 success: false,
                 message: 'Sale not found'
             });
         }
+
         // Check permission
-        const userRole = req.user?.role;
-        const userDepotId = req.user?.depoId;
+        const userRole = (req as any).user?.role;
+        const userDepotId = (req as any).user?.depoId;
+
         if (userRole === 'in_charge' && sale.depotId._id.toString() !== userDepotId) {
             return res.status(403).json({
                 success: false,
                 message: 'Access denied to this sale'
             });
         }
+
         res.status(200).json({
             success: true,
             data: sale
         });
-    }
-    catch (error) {
+    } catch (error: any) {
         res.status(400).json({
             success: false,
             message: error.message || 'Failed to fetch sale'
         });
     }
 };
-exports.getSaleByIdController = getSaleByIdController;
+
 // Get daily sales
-const getDailySalesController = async (req, res) => {
+export const getDailySalesController = async (req: Request, res: Response) => {
     try {
-        const userRole = req.user?.role;
-        const userDepotId = req.user?.depoId;
+        const userRole = (req as any).user?.role;
+        const userDepotId = (req as any).user?.depoId;
         const { startDate, endDate } = req.query;
+
         let depotId = userDepotId;
+
         // Admin can specify depot
         if (userRole === 'admin' && req.params.depotId) {
             depotId = req.params.depotId;
         }
+
         if (!depotId) {
             throw new Error('Depot ID is required');
         }
-        const dailySales = await (0, sale_service_1.getDailySales)(depotId, startDate, endDate);
+
+        const dailySales = await getDailySales(
+            depotId,
+            startDate as string,
+            endDate as string
+        );
+
         res.status(200).json({
             success: true,
             data: dailySales
         });
-    }
-    catch (error) {
+    } catch (error: any) {
         res.status(400).json({
             success: false,
             message: error.message || 'Failed to fetch daily sales'
         });
     }
 };
-exports.getDailySalesController = getDailySalesController;
+
 // Get today's sales
-const getTodaySalesController = async (req, res) => {
+export const getTodaySalesController = async (req: Request, res: Response) => {
     try {
-        const userRole = req.user?.role;
-        const userDepotId = req.user?.depoId;
+        const userRole = (req as any).user?.role;
+        const userDepotId = (req as any).user?.depoId;
+
         let depotId = userDepotId;
+
         // Admin can specify depot
         if (userRole === 'admin' && req.params.depotId) {
             depotId = req.params.depotId;
         }
+
         if (!depotId) {
             throw new Error('Depot ID is required');
         }
-        const todaySales = await (0, sale_service_1.getTodaySales)(depotId);
+
+        const todaySales = await getTodaySales(depotId);
+
         res.status(200).json({
             success: true,
             data: todaySales
         });
-    }
-    catch (error) {
+    } catch (error: any) {
         res.status(400).json({
             success: false,
             message: error.message || 'Failed to fetch today\'s sales'
         });
     }
 };
-exports.getTodaySalesController = getTodaySalesController;
 // Mark bank deposit
-const markBankDepositController = async (req, res) => {
+export const markBankDepositController = async (req: Request, res: Response) => {
     try {
-        const { id } = sale_validator_1.dailySalesIdSchema.parse(req.params);
-        const validatedData = sale_validator_1.bankDepositSchema.parse(req.body);
-        const userId = req.user?.userId;
+        const { id } = dailySalesIdSchema.parse(req.params);
+        const validatedData = bankDepositSchema.parse(req.body);
+
+        const userId = (req as any).user?.userId;
         if (!userId) {
             throw new Error('User not authenticated');
         }
+
         // Check permission
-        const userRole = req.user?.role;
-        const userDepotId = req.user?.depotId;
+        const userRole = (req as any).user?.role;
+        const userDepotId = (req as any).user?.depotId;
+
         // In-charge can only mark deposit for their depot
         if (userRole === 'in_charge') {
             // You might want to check if the daily sales belongs to their depot
         }
-        const updated = await (0, sale_service_1.markBankDeposit)(id, validatedData, userId);
+
+        const updated = await markBankDeposit(id, validatedData, userId);
+
         res.status(200).json({
             success: true,
             message: 'Bank deposit marked successfully',
             data: updated
         });
-    }
-    catch (error) {
+    } catch (error: any) {
         res.status(400).json({
             success: false,
             message: error.message || 'Failed to mark bank deposit'
         });
     }
 };
-exports.markBankDepositController = markBankDepositController;
+
+
 // Get sales summary
-const getSummaryController = async (req, res) => {
+export const getSummaryController = async (req: Request, res: Response) => {
     try {
-        const { startDate, endDate } = sale_validator_1.dateRangeSchema.parse(req.query);
-        const userRole = req.user?.role;
-        const userDepotId = req.user?.depoId;
+        const { startDate, endDate } = dateRangeSchema.parse(req.query);
+
+        const userRole = (req as any).user?.role;
+        const userDepotId = (req as any).user?.depoId;
+
         let depotId = userDepotId;
+
         // Admin can specify depot
         if (userRole === 'admin' && req.params.depotId) {
             depotId = req.params.depotId;
         }
+
         if (!depotId) {
             throw new Error('Depot ID is required');
         }
-        const summary = await (0, sale_service_1.getSalesSummary)(depotId, startDate, endDate);
+
+        const summary = await getSalesSummary(depotId, startDate, endDate);
+
         res.status(200).json({
             success: true,
             data: summary
         });
-    }
-    catch (error) {
+    } catch (error: any) {
         res.status(400).json({
             success: false,
             message: error.message || 'Failed to generate sales summary'
         });
     }
 };
-exports.getSummaryController = getSummaryController;
+
 // Cancel sale
-const cancelSaleController = async (req, res) => {
+export const cancelSaleController = async (req: Request, res: Response) => {
     try {
-        const { id } = sale_validator_1.saleIdSchema.parse(req.params);
+        const { id } = saleIdSchema.parse(req.params);
         const { reason } = req.body;
+
         if (!reason) {
             throw new Error('Cancellation reason is required');
         }
-        const userId = req.user?.userId;
+
+        const userId = (req as any).user?.userId;
         if (!userId) {
             throw new Error('User not authenticated');
         }
+
         // Check permission - only admin can cancel sales
-        const userRole = req.user?.role;
+        const userRole = (req as any).user?.role;
         if (userRole !== 'admin') {
             return res.status(403).json({
                 success: false,
                 message: 'Only admin can cancel sales'
             });
         }
-        const cancelledSale = await (0, sale_service_1.cancelSale)(id, userId, reason);
+
+        const cancelledSale = await cancelSale(id, userId, reason);
+
         res.status(200).json({
             success: true,
             message: 'Sale cancelled successfully',
             data: cancelledSale
         });
-    }
-    catch (error) {
+    } catch (error: any) {
         res.status(400).json({
             success: false,
             message: error.message || 'Failed to cancel sale'
         });
     }
 };
-exports.cancelSaleController = cancelSaleController;
+
 // Get customer history
-const getCustomerHistoryController = async (req, res) => {
+export const getCustomerHistoryController = async (req: Request, res: Response) => {
     try {
         const { phone } = req.params;
         const { limit } = req.query;
+
         if (!phone) {
             throw new Error('Customer phone number is required');
         }
-        const history = await (0, sale_service_1.getCustomerHistory)(phone, limit ? parseInt(limit) : 10);
+
+        const history = await getCustomerHistory(phone,
+            limit ? parseInt(limit as string) : 10
+        );
+
         res.status(200).json({
             success: true,
             data: history
         });
-    }
-    catch (error) {
+    } catch (error: any) {
         res.status(400).json({
             success: false,
             message: error.message || 'Failed to fetch customer history'
         });
     }
 };
-exports.getCustomerHistoryController = getCustomerHistoryController;

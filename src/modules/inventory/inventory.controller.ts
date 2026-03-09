@@ -13,15 +13,7 @@ import {
     stockHistoryFiltersSchema
 } from './inventory.validator';
 import {resolveUserAndDepot} from "../../utils/requestHelpers";
-import { ZodSchema } from 'zod';
-
-
-export const validateRequest = <T>(
-    schema: ZodSchema<T>,
-    req: Request
-): T => {
-    return schema.parse(req.body);
-};
+import {validateRequest} from "../../utils/validateRequest";
 
 // Receive stock into depot
 export const receiveStockController = async (req: Request, res: Response) => {

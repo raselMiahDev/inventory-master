@@ -33,47 +33,13 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SaleModel = void 0;
-// modules/sale/models/sale.model.ts
+exports.DailySalesModel = void 0;
+// modules/sale/models/dailySales.model.ts
 const mongoose_1 = __importStar(require("mongoose"));
-const uuid_1 = require("uuid");
-const SaleItemSchema = new mongoose_1.Schema({
-    productId: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'Product',
-        required: true
-    },
-    productName: {
-        type: String,
-        required: true
-    },
-    productCode: {
-        type: String,
-        required: true
-    },
-    quantity: {
-        type: Number,
+const DailySalesSchema = new mongoose_1.Schema({
+    date: {
+        type: Date,
         required: true,
-        min: 0.1
-    },
-    unitPrice: {
-        type: Number,
-        required: true,
-        min: 0
-    },
-    totalPrice: {
-        type: Number,
-        required: true,
-        min: 0
-    },
-    packSize: {
-        type: Number
-    }
-}, { _id: false });
-const SaleSchema = new mongoose_1.Schema({
-    saleId: {
-        type: String,
-        unique: true,
         index: true
     },
     depotId: {
@@ -82,46 +48,60 @@ const SaleSchema = new mongoose_1.Schema({
         required: true,
         index: true
     },
-    items: [SaleItemSchema],
-    totalAmount: {
-        type: Number,
-        required: true,
-        min: 0
-    },
-    cashCollected: {
-        type: Number,
-        required: true,
-        min: 0
-    },
-    changeAmount: {
+    totalSales: {
         type: Number,
         required: true,
         default: 0,
         min: 0
     },
-    customerName: {
-        type: String,
-        trim: true,
-        index: true
-    },
-    customerPhone: {
-        type: String,
-        trim: true,
-        index: true
-    },
-    paymentMethod: {
-        type: String,
-        enum: ['CASH', 'CARD', 'UPI', 'CREDIT'],
+    totalCashCollected: {
+        type: Number,
         required: true,
-        default: 'CASH'
+        default: 0,
+        min: 0
+    },
+    totalCardAmount: {
+        type: Number,
+        required: true,
+        default: 0,
+        min: 0
+    },
+    totalUpiAmount: {
+        type: Number,
+        required: true,
+        default: 0,
+        min: 0
+    },
+    totalCreditAmount: {
+        type: Number,
+        required: true,
+        default: 0,
+        min: 0
+    },
+    saleCount: {
+        type: Number,
+        required: true,
+        default: 0,
+        min: 0
+    },
+    bankDepositAmount: {
+        type: Number,
+        min: 0
+    },
+    bankDepositDate: {
+        type: Date
+    },
+    depositSlipNo: {
+        type: String,
+        trim: true
     },
     status: {
         type: String,
-        enum: ['COMPLETED', 'PENDING', 'CANCELLED'],
-        default: 'COMPLETED',
+        enum: ['PENDING', 'DEPOSITED', 'PARTIAL'],
+        default: 'PENDING',
         index: true
     },
-    notes: {
+    remarks: {
         type: String,
         trim: true
     },
@@ -141,18 +121,9 @@ const SaleSchema = new mongoose_1.Schema({
         }
     }
 });
-// Indexes for faster queries
-SaleSchema.index({ createdAt: -1 });
-SaleSchema.index({ depotId: 1, createdAt: -1 });
-SaleSchema.index({ customerPhone: 1, createdAt: -1 });
-SaleSchema.index({ 'items.productId': 1 });
-// Pre-save hook to generate sale ID
-SaleSchema.pre('save', function () {
-    if (!this.saleId) {
-        const date = new Date();
-        const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-        const uuid = (0, uuid_1.v4)().split('-')[0].toUpperCase();
-        this.saleId = `SALE-${dateStr}-${uuid}`;
-    }
-});
-exports.SaleModel = mongoose_1.default.model('Sale', SaleSchema);
+// Compound unique index - one entry per depot per day
+DailySalesSchema.index({ depotId: 1, date: 1 }, { unique: true });
+// Index for queries
+DailySalesSchema.index({ date: -1 });
+DailySalesSchema.index({ status: 1, date: -1 });
+exports.DailySalesModel = mongoose_1.default.model('DailySales', DailySalesSchema);

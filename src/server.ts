@@ -1,4 +1,4 @@
-import app from "./app";
+import app from ".";
 import { connectDB } from "./config/db";
 import { getEnvConfig } from "./config/env";
 
