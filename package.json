@@ -1,7 +1,7 @@
 {
-  "name": "server",
+"name": "inventory-system",
   "version": "1.0.0",
-  "description": "",
+  "description": "real life stock and inventory transaction problem solution",
   "main": "index.js",
   "scripts": {
     "dev": "nodemon",
@@ -9,8 +9,8 @@
     "start": "node dist/server.js",
     "deploy": "vercel --prod"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["express js","typescript","mongodb","mongoose","zod"],
+  "author": "Md Rasel Miah",
   "license": "ISC",
   "packageManager": "pnpm@10.28.2",
   "dependencies": {
